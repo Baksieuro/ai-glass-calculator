@@ -1,0 +1,278 @@
+<!-- app/templates/commercial_blue.html -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        /* Нумерация страниц с поддержкой WeasyPrint*/
+        @page { 
+            size: A4;
+            margin: 20mm;
+
+            @bottom-center {
+                content: "Стр. " counter(page) " из " counter(pages);
+                font-size: 10px;
+                color: #666;
+            }
+        }
+        
+        /* Базовые стили и фирменные голубые полоски */
+        body {
+            font-family: "Arial", sans-serif;
+            margin: 0;
+            padding: 0;
+            color: #333;
+            font-size: 14px; /* единый базовый размер шрифта */
+        }
+
+        .header-bar {
+            width: 100%;
+            height: 12px;
+            background: #3ba6ff;
+        }
+
+        .container {
+            padding: 25px 40px;
+        }
+
+        .header-flex {
+            display: flex;
+            width: 100%;
+            gap: 25px;
+            align-items: flex-start;
+        }
+
+        .logo-box {
+            width: 30%;
+        }
+
+        .company-box {
+            width: 70%;
+            font-size: 12px;
+        }
+
+        .company-title {
+            font-size: 14px;
+            color: #3ba6ff;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .logo {
+            width: 120px;
+            height: auto;
+            margin-bottom: 14px;
+        }
+
+        h1 {
+            font-size: 26px;
+            margin-bottom: 4px;
+            color: #222;
+        }
+
+        .subtitle {
+            margin-bottom: 18px;
+            color: #666;
+        }
+
+        .block {
+            margin-top: 18px;
+            padding-bottom: 8px;
+        }
+
+        .block-title {
+            font-size: 16px;
+            color: #3ba6ff;
+            border-left: 6px solid #3ba6ff;
+            padding-left: 10px;
+            margin-bottom: 8px;
+        }
+
+        .item-title {
+            font-weight: bold;
+            font-size: 14px;
+            margin-bottom: 6px;
+        }
+
+        .services-list {
+            margin-left: 14px;
+            margin-bottom: 8px;
+        }
+
+        .services-list li {
+            margin-bottom: 4px;
+        }
+
+        .item-total {
+            text-align: right;
+            font-weight: bold;
+            margin-top: 6px;
+        }
+
+        .designer-stripe {
+            height: 6px;
+            background: linear-gradient(90deg, #3ba6ff 0%, #7ecbff 100%);
+            margin: 10px 0 18px 0;
+            border-radius: 3px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .works-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-top: 10px;
+        }
+
+        .works-grid img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            border-radius: 6px;
+            border: 1px solid #d3d3d3;
+        }
+
+        .delivery-block {
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #d0d0d0;
+        }
+
+        .total-block {
+            margin-top: 16px;
+            font-size: 20px;
+            font-weight: bold;
+            text-align: right;
+            color: #222;
+        }
+
+        .FooterList p {
+            margin: 4px 0;
+        }
+
+        .total-wrapper {
+            margin-top: 30px;
+            text-align: center;
+        }
+
+        .total-text {
+            font-size: 22px;
+            font-weight: bold;
+            color: #222;
+            margin: 6px 0;
+        }
+
+        .total-decor {
+            height: 6px;
+            background: linear-gradient(90deg, #7ecbff 0%, #3ba6ff 100%);
+            border-radius: 3px;
+            margin-bottom: 6px;
+        }
+
+    </style>
+</head>
+<body>
+<div class="header-bar"></div>
+
+    <div class="container">
+
+        <div class="header-flex">
+        <div class="logo-box">
+            {% if logo %}
+                <img class="logo" src="{{ logo }}">
+            {% endif %}
+        </div>
+
+        <div class="company-box">
+            <div class="company-title">Реквизиты компании</div>
+            <p>{{ company_info.name }}</p>
+            <p>{{ company_info.address }}</p>
+            <p>ИНН: {{ company_info.inn }} | К/с: {{ company_info.ks }}</p>
+            <p>Р/с: {{ company_info.rs }} | Банк: {{ company_info.bank }}</p>
+            <p>БИК Банка: {{ company_info.bik }}</p>
+        </div>
+    </div>
+
+    <h1>Коммерческое предложение №{{ proposal_number }}</h1>
+    <div class="subtitle">от {{ date }}</div>
+
+    <!-- Цикл по изделиям -->
+    {% for it in items %}
+        <div class="block">
+            <div class="item-title">
+                {{ loop.index }}. {{ it.product_name }} ({{ it.thickness }} мм), размер: {{ it.width }} × {{ it.height }} мм — кол-во: {{ it.quantity }}
+            </div>
+            <div><strong>Дополнительные услуги:</strong></div>
+            <ul class="services-list">
+                {% if it.services %}
+                    {% for s in it.services %}
+                        <li>{{ s }}</li>
+                    {% endfor %}
+                {% else %}
+                    <li>— (нет дополнительных услуг)</li>
+                {% endif %}
+            </ul>
+
+            <div class="item-total">сумма: {{ "{:,.2f}".format(it.item_total).replace(',', ' ') }} ₽</div>
+
+            <div class="designer-stripe"></div>
+        </div>
+    {% endfor %}
+
+    <!-- Блок доставки (если есть) -->
+    {% if deliveries %}
+        <div class="block delivery-block">
+            <div class="block-title">Доставка</div>
+            <ul>
+                {% for d in deliveries %}
+                    <li>{{ d.label }}</li>
+                {% endfor %}
+            </ul>
+            <div class="item-total">сумма: {{ "{:,.2f}".format(deliveries | sum(attribute='price')) | replace(',', ' ') }} ₽</div>
+        </div>
+    {% endif %}
+
+    {% if works %}
+        <div class="block">
+            <div class="block-title">Наши работы</div>
+            <div class="works-grid">
+                {% for w in works %}
+                    <img src="{{ w }}">
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    <div class="block">
+        <div class="block-title">Условия</div>
+        <p><strong>Сроки поставки:</strong> {{ delivery_terms }}</p>
+        <p><strong>Оплата:</strong> {{ payment_terms }}</p>
+        <p><strong>Примечание:</strong> {{ additional_terms }}</p>
+    </div>
+
+    <div class="block footer-terms">
+        <div class="block-title">Заключительные условия</div>
+        <div class="FooterList">
+            {% for t in final_terms %}
+                <p>— {{ t }}</p>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="total-wrapper">
+        <div class="total-decor"></div>
+
+        <div class="total-text">
+            ИТОГО: {{ "{:,.0f}".format(total).replace(',', ' ') }} ₽
+        </div>
+
+        <div class="total-decor"></div>
+    </div>
+
+</div>
+</body>
+</html>
