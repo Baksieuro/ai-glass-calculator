@@ -1,7 +1,15 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
-*.py[codz]
-*$py.class
+*.pyc
+.env
+venv/
+.venv/
+*.sqlite3
+*.db
+instance/
+.pytest_cache/
+*.log
+/app/data/*.json
 
 # C extensions
 *.so
