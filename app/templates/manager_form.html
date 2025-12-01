@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Менеджер — расчет</title>
+
+    <style>
+        body { font-family: Arial; padding: 30px; }
+        label { display: block; margin: 10px 0 4px; }
+        input, select { padding: 6px; width: 240px; }
+        .block { margin-bottom: 20px; }
+        button { padding: 10px 20px; background: #3ba6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #1a8ee9; }
+    </style>
+</head>
+<body>
+
+<h1>Расчет изделия</h1>
+
+<form action="/manager/preview" method="post">
+
+    <div class="block">
+        <label>Тип изделия:</label>
+        <select name="product_key" required>
+            {% for key, item in products.items() %}
+                <option value="{{ key }}">{{ item.label }} ({{ item.thickness }} мм)</option>
+            {% endfor %}
+        </select>
+    </div>
+
+    <div class="block">
+        <label>Ширина (мм)</label>
+        <input type="number" name="width_mm" required>
+        <label>Высота (мм)</label>
+        <input type="number" name="height_mm" required>
+        <label>Количество</label>
+        <input type="number" name="quantity" value="1" required>
+    </div>
+
+    <h3>Дополнительные опции:</h3>
+
+    <label><input type="checkbox" name="edge"> Обработка кромки</label>
+    <label><input type="checkbox" name="film"> Противоосколочная пленка</label>
+
+    <label><input type="checkbox" name="drill"> Сверление отверстий</label>
+    <input type="number" name="drill_qty" value="0" placeholder="Кол-во отверстий">
+
+    <label><input type="checkbox" name="pack"> Упаковка</label>
+    <label><input type="checkbox" name="mount"> Монтаж</label>
+
+    <label>Доставка:</label>
+    <select name="delivery_city">
+        <option value="">Без доставки</option>
+        <option value="center_центр">Центр</option>
+        <option value="suburb_пригород">Пригород</option>
+    </select>
+
+    <br><br>
+    <button type="submit">Рассчитать</button>
+</form>
+
+</body>
+</html>

@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>Предпросмотр</title>
+    <style>
+        body { font-family: Arial; padding: 30px; }
+        .btn { padding: 10px 20px; background: #3ba6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<h1>Предпросмотр расчёта</h1>
+
+<p><strong>Товар:</strong> {{ result.positions[0].name }}</p>
+<p><strong>Размер:</strong> {{ item.width_mm }} × {{ item.height_mm }} мм</p>
+<p><strong>Количество:</strong> {{ quantity }}</p>
+<p><strong>Итого:</strong> {{ result.total }} ₽</p>
+
+<h3>Дополнительные услуги:</h3>
+<ul>
+    {% for pos in result.positions[1:] %}
+        <li>{{ pos.name }} — {{ pos.total }} ₽</li>
+    {% endfor %}
+</ul>
+
+<form action="/api/pdf" method="post">
+    <!-- Здесь далее будет JSON скрытого поля (мы сделаем позже) -->
+    <button class="btn">Сформировать PDF</button>
+</form>
+
+</body>
+</html>

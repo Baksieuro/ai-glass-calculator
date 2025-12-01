@@ -6,6 +6,7 @@ from pathlib import Path
 
 from app.config import settings # импорт настроек
 from app.api.routes import router # импорт роутера API
+from app.web.manager_routes import router as manager_router
 
 
 app = FastAPI(title=settings.PROJECT_NAME)
@@ -22,3 +23,4 @@ async def index(request):
 
 # Подключение роутера API
 app.include_router(router, prefix="/api")
+app.include_router(manager_router)
