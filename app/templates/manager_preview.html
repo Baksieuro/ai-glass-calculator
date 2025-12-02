@@ -1,33 +1,55 @@
+<!-- app/templates/manager_preview.html -->
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <title>Предпросмотр</title>
+    <meta charset="utf-8">
+    <title>Предпросмотр расчёта — Менеджер</title>
     <style>
-        body { font-family: Arial; padding: 30px; }
-        .btn { padding: 10px 20px; background: #3ba6ff; color: #fff; border: none; border-radius: 4px; cursor: pointer; }
+        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
+        .box { border: 1px solid #e6e6e6; padding: 16px; border-radius: 6px; max-width: 900px; }
+        h1 { color: #3ba6ff; }
+        .row { display: flex; gap: 18px; align-items: flex-start; }
+        .col { flex: 1; }
+        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
+        table th, table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
+        .btn { display: inline-block; background: #3ba6ff; color: white; padding: 10px 16px; border-radius: 6px; text-decoration: none; }
+        .muted { color: #666; font-size: 13px; }
     </style>
 </head>
 <body>
+    <h1>Предпросмотр расчёта</h1>
 
-<h1>Предпросмотр расчёта</h1>
+    <div class="box">
+        <div class="row">
+            <div class="col">
+                <h3>Товар</h3>
+                <p><strong>{{ result.positions[0].name }}</strong></p>
+                <p>Размер: {{ item.width_mm }} × {{ item.height_mm }} мм</p>
+                <p>Кол-во: {{ quantity }}</p>
 
-<p><strong>Товар:</strong> {{ result.positions[0].name }}</p>
-<p><strong>Размер:</strong> {{ item.width_mm }} × {{ item.height_mm }} мм</p>
-<p><strong>Количество:</strong> {{ quantity }}</p>
-<p><strong>Итого:</strong> {{ result.total }} ₽</p>
+                <h3>Дополнительные услуги</h3>
+                <ul>
+                    {% for p in result.positions[1:] %}
+                        <li>{{ p.name }} — {{ "{:,.2f}".format(p.total).replace(",", " ") }} ₽</li>
+                    {% endfor %}
+                </ul>
 
-<h3>Дополнительные услуги:</h3>
-<ul>
-    {% for pos in result.positions[1:] %}
-        <li>{{ pos.name }} — {{ pos.total }} ₽</li>
-    {% endfor %}
-</ul>
+                <p class="muted">Итого (расчёт): <strong>{{ "{:,.2f}".format(result.total).replace(",", " ") }} ₽</strong></p>
+            </div>
 
-<form action="/api/pdf" method="post">
-    <!-- Здесь далее будет JSON скрытого поля (мы сделаем позже) -->
-    <button class="btn">Сформировать PDF</button>
-</form>
+            <div class="col">
+                <h3>Сформировать PDF</h3>
+                <p>Нажмите кнопку ниже — PDF будет сгенерирован и сохранён в локальную папку <code>/pdf</code>.</p>
 
+                <form action="/manager/pdf" method="post">
+                    <!-- data_json передаётся из роутера как готовая JSON-строка -->
+                    <input type="hidden" name="data_json" value='{{ data_json }}'>
+                    <button class="btn" type="submit">Сформировать PDF</button>
+                </form>
+
+                <p style="margin-top:10px"><a href="/manager">◀ Вернуться к форме</a></p>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
