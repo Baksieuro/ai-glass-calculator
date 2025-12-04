@@ -2,54 +2,75 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="utf-8">
-    <title>Предпросмотр расчёта — Менеджер</title>
+    <meta charset="UTF-8">
+    <title>Предварительный просмотр</title>
     <style>
-        body { font-family: Arial, sans-serif; padding: 24px; color: #222; }
-        .box { border: 1px solid #e6e6e6; padding: 16px; border-radius: 6px; max-width: 900px; }
-        h1 { color: #3ba6ff; }
-        .row { display: flex; gap: 18px; align-items: flex-start; }
-        .col { flex: 1; }
-        table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        table th, table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; }
-        .btn { display: inline-block; background: #3ba6ff; color: white; padding: 10px 16px; border-radius: 6px; text-decoration: none; }
-        .muted { color: #666; font-size: 13px; }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .item-block { border: 1px solid #e7e7e7; padding: 12px; border-radius: 6px; margin-bottom: 16px; }
+        .services-list { margin-left: 18px; margin-top: 4px; }
+        .actions { margin-top: 20px; }
+        button {
+            padding: 10px 15px;
+            background: #3ba6ff;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+        }
+        .total {
+            font-size: 20px;
+            font-weight: bold;
+            margin-top: 20px;
+        }
     </style>
 </head>
 <body>
-    <h1>Предпросмотр расчёта</h1>
 
-    <div class="box">
-        <div class="row">
-            <div class="col">
-                <h3>Товар</h3>
-                <p><strong>{{ result.positions[0].name }}</strong></p>
-                <p>Размер: {{ item.width_mm }} × {{ item.height_mm }} мм</p>
-                <p>Кол-во: {{ quantity }}</p>
+<h1>Предварительный просмотр расчёта</h1>
 
-                <h3>Дополнительные услуги</h3>
-                <ul>
-                    {% for p in result.positions[1:] %}
-                        <li>{{ p.name }} — {{ "{:,.2f}".format(p.total).replace(",", " ") }} ₽</li>
-                    {% endfor %}
-                </ul>
+{% for item in items %}
+    <div class="item-block">
+        <h3>{{ loop.index }}. {{ item.product_name }} ({{ item.thickness }} мм)</h3>
 
-                <p class="muted">Итого (расчёт): <strong>{{ "{:,.2f}".format(result.total).replace(",", " ") }} ₽</strong></p>
-            </div>
+        <p>Размер: {{ item.width }} × {{ item.height }} мм</p>
+        <p>Количество: {{ item.quantity }}</p>
 
-            <div class="col">
-                <h3>Сформировать PDF</h3>
-                <p>Нажмите кнопку ниже — PDF будет сгенерирован и сохранён в локальную папку <code>/pdf</code>.</p>
+        <strong>Дополнительные услуги:</strong>
+        <ul class="services-list">
+            {% if item.services %}
+                {% for s in item.services %}
+                    <li>— {{ s }}</li>
+                {% endfor %}
+            {% else %}
+                <li>— нет</li>
+            {% endif %}
+        </ul>
 
-                <form action="/manager/pdf" method="post">
-                    <!-- data_json передаётся из роутера как готовая JSON-строка -->
-                    <input type="hidden" name="data_json" value='{{ data_json }}'>
-                    <button class="btn" type="submit">Сформировать PDF</button>
-                </form>
-
-                <p style="margin-top:10px"><a href="/manager">◀ Вернуться к форме</a></p>
-            </div>
-        </div>
+        <p><strong>Сумма по изделию: {{ "%.2f"|format(item.item_total) }} ₽</strong></p>
     </div>
+{% endfor %}
+
+{% if deliveries %}
+    <div class="item-block">
+        <h3>Доставка</h3>
+        <ul class="services-list">
+            {% for d in deliveries %}
+                <li>{{ d.label }} — {{ "%.2f"|format(d.price) }} ₽</li>
+            {% endfor %}
+        </ul>
+    </div>
+{% endif %}
+
+<div class="total">
+    ИТОГО: {{ "%.2f"|format(total) }} ₽
+</div>
+
+<form method="post" action="/manager/pdf">
+    <input type="hidden" name="data_json" value='{{ data_json | tojson | safe }}'>
+    <div class="actions">
+        <button type="submit">Сформировать PDF</button>
+    </div>
+</form>
+
 </body>
 </html>

@@ -18,150 +18,101 @@ from app.core.schemas import CalcResponse, CalcPosition
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
+TEMPLATES_DIR = BASE_DIR / "templates"
 ASSETS_DIR = BASE_DIR / "assets"
+DATA_DIR = BASE_DIR / "data"
 
-# Загружаем реквизиты компании
-with open(settings.DATA_DIR / "company_info.json", "r", encoding="utf-8") as f:
-    company_info = json.load(f)
+env = Environment(loader=FileSystemLoader(str(TEMPLATES_DIR)))
 
+# Загружаем реквизиты компании (если файл есть)
+company_info = {}
+company_info_path = DATA_DIR / "company_info.json"
+if company_info_path.exists():
+    with open(company_info_path, "r", encoding="utf-8") as f:
+        try:
+            company_info = json.load(f)
+        except Exception:
+            company_info = {}
 
 def _load_logo():
-    """Ищет логотип в app/assets/logo и возвращает file:// путь"""
+    """Возвращает file:/// путь к логотипу или None"""
     logo_dir = ASSETS_DIR / "logo"
     if not logo_dir.exists():
         return None
-
     for f in logo_dir.iterdir():
-        if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]:
+        if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp", ".svg"]:
             return f"file:///{f.resolve()}"
-
     return None
 
-
-def _load_works():
-    """
-    Возвращает список file:// к изображениям работ (максимум 3 случайных).
-    """
+def _load_work_photos():
+    """Возвращает список file:/// путей к фото работ (максимум 3)"""
     works_dir = ASSETS_DIR / "works"
     if not works_dir.exists():
         return []
-
     imgs = []
     for f in works_dir.iterdir():
-        if f.suffix.lower() in [".jpg", ".jpeg", ".png", ".webp"]:
+        if f.suffix.lower() in [".png", ".jpg", ".jpeg", ".webp"]:
             imgs.append(f"file:///{f.resolve()}")
-
-    # Берём максимум 3 случайных
-    import random
-    random.shuffle(imgs)
+    # вернём максимум 3
     return imgs[:3]
 
-def clean_number(s: str) -> float:
-    return float(''.join(ch for ch in s if (ch.isdigit() or ch == '.')))
-
-def humanize_delivery_label(raw: str) -> str:
+def generate_pdf(
+    items: list,
+    deliveries: list,
+    total: float,
+    filename: str = None,
+    proposal_number: str = None,
+    delivery_terms: str = "до 14 рабочих дней",
+    payment_terms: str = "Предоплата 100% на р/с Поставщика",
+    additional_terms: str = "Стоимость, рассчитанная в данном коммерческом предложении, является ориентировочной. Окончательная цена рассчитывается после профессионального замера",
+    final_terms: list = None
+) -> Path:
     """
-    Приводит доставку к формату (центр), (пригород), (край), без английских префиксов.
-    Пример: "Доставка (center_центр)" → "Доставка (центр)"
+    Генерирует PDF из переданных items/deliveries/total.
+    Возвращает Path к сгенерированному PDF-файлу (в settings.BASE_DIR).
     """
-    import re
-    m = re.search(r"\((.*?)\)", raw)
-    if not m:
-        return raw
-    inside = m.group(1)  # center_центр
-    if "_" in inside:
-        inside = inside.split("_", 1)[1]  # берём русскую часть
-    return f"Доставка ({inside})"
+    if final_terms is None:
+        final_terms = [
+            "Настоящее предложение действует 14 дней.",
+            "Настоящее предложение является безотзывной офертой."
+        ]
 
+    # Подготовка данных для шаблона
+    logo = _load_logo()
+    works = _load_work_photos()
 
-# -------------------------------------------------------------------------
-#                          ГЕНЕРАЦИЯ PDF
-# -------------------------------------------------------------------------
-def generate_pdf(result: CalcResponse):
-    """
-    Генерация PDF коммерческого предложения.
-    Формирование структуры:
-        items[]      — товары
-        deliveries[] — доставка
-    """
-    # Готовим структуру для шаблона
-    items_map = {}
-    deliveries = []
+    # Если filename не передан — формируем
+    if filename is None:
+        now = datetime.now().strftime("%d-%m-%Y %H-%M-%S")
+        filename = f"Коммерческое предложение {now}.pdf"
 
-    for pos in result.positions:
+    # Если proposal_number не задан — делаем по времени
+    if proposal_number is None:
+        proposal_number = datetime.now().strftime("%d%m%Y%H%M%S")
 
-        # --- Доставка ---
-        if pos.item_index is None:
-            deliveries.append({
-                "label": humanize_delivery_label(pos.name),
-                "price": pos.total
-            })
-            continue
-
-        # --- Товары и услуги ---
-        if pos.item_index not in items_map:
-            items_map[pos.item_index] = {
-                "product_name": "",
-                "thickness": "",
-                "width": 0,
-                "height": 0,
-                "quantity": 1,
-                "services": [],
-                "item_total": 0
-            }
-
-        # --- Материал ---
-        if "мм)" in pos.name and "[" in pos.name:
-            main_part = pos.name.split("[")[0].strip()
-            dims = pos.name.split("[")[1].split("]")[0]
-            width_str, height_str = dims.split("×")
-
-            items_map[pos.item_index]["product_name"] = main_part.split("(")[0].strip()
-            items_map[pos.item_index]["thickness"] = main_part.split("(")[1].replace("мм)", "").strip()
-            items_map[pos.item_index]["width"] = clean_number(width_str)
-            items_map[pos.item_index]["height"] = clean_number(height_str)
-            items_map[pos.item_index]["quantity"] = int(pos.quantity)
-
-        # --- Услуги ---
-        else:
-            if "Итого" not in pos.name:
-                items_map[pos.item_index]["services"].append(pos.name)
-
-        # --- Итог по изделию ---
-        if pos.name.startswith("Итого"):
-            items_map[pos.item_index]["item_total"] = pos.total
-
-    # Переводим карту в список по порядку
-    items = [items_map[k] for k in sorted(items_map.keys())]
-
-    # Подключение шаблона
-    env = Environment(loader=FileSystemLoader(BASE_DIR / "templates"))
     template = env.get_template("commercial_blue.html")
-
     html_out = template.render(
-        items=items,
-        deliveries=deliveries,
-        total=result.total,
-        proposal_number=datetime.now().strftime("%H%M%S"),
+        items=items or [],
+        deliveries=deliveries or [],
+        total=total or 0,
+        proposal_number=proposal_number,
         date=datetime.now().strftime("%d.%m.%Y"),
         company_info=company_info,
-        logo=_load_logo(),
-        works=_load_works(),
-        delivery_terms="до 14 рабочих дней",
-        payment_terms="Предоплата 100% на р/с Поставщика",
-        additional_terms=(
-            "Стоимость является ориентировочной. "
-            "Окончательная цена рассчитывается после профессионального замера."
-        ),
-        final_terms=[
-            "Настоящее предложение действует 14 дней.",
-            "Предложение является безотзывной офертой."
-        ]
+        delivery_terms=delivery_terms,
+        payment_terms=payment_terms,
+        additional_terms=additional_terms,
+        final_terms=final_terms,
+        logo=logo,
+        works=works
     )
 
-    # Генерация файла
-    filename = f"Коммерческое предложение {datetime.now().strftime('%d-%m-%Y %H-%M-%S')}.pdf"
-    pdf_path = settings.BASE_DIR / filename
-    HTML(string=html_out).write_pdf(str(pdf_path))
+    # Сохраняем PDF в каталог settings.BASE_DIR (как раньше)
+    try:
+        from app.config import settings
+        out_dir = settings.BASE_DIR
+    except Exception:
+        out_dir = BASE_DIR
 
+    pdf_path = Path(out_dir) / filename
+    HTML(string=html_out, base_url=str(BASE_DIR)).write_pdf(str(pdf_path))
     return pdf_path
