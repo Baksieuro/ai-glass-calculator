@@ -65,11 +65,9 @@
     ИТОГО: {{ "%.2f"|format(total) }} ₽
 </div>
 
-<form method="post" action="/manager/pdf">
-    <input type="hidden" name="data_json" value='{{ data_json | tojson | safe }}'>
-    <div class="actions">
-        <button type="submit">Сформировать PDF</button>
-    </div>
+<form action="/manager/pdf" method="post">
+    <input type="hidden" name="data_json" value='{{ data_json | safe }}'>
+    <button type="submit">Сформировать PDF</button>
 </form>
 
 </body>
