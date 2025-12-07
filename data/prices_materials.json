@@ -1,0 +1,12 @@
+{
+    "mirror_standart_4mm": 1640,
+    "mirror_osvetlen_4mm": 3090,
+    "mirror_grafit_4mm": 4000,
+    "mirror_bronza_4mm": 4000,
+    "mirror_standart_6mm": 2450,
+    "glass_standart_4mm": 1000,
+    "glass_graybrown_4mm": 2100,
+    "glass_standart_5mm": 1540,
+    "glass_standart_6mm": 1760,
+    "glass_standart_8mm": 2310
+}

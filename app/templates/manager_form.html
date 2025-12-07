@@ -3,174 +3,104 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>Менеджер — Расчёт</title>
+    <title>Расчёт изделия</title>
     <style>
         body { font-family: Arial, sans-serif; padding: 20px; }
-        .item { border: 1px solid #e7e7e7; padding: 12px; margin-bottom: 12px; border-radius: 6px; }
-        label { display: block; margin: 6px 0 2px; }
-        input, select { padding: 6px; width: 220px; }
-        .actions { margin-top: 12px; }
-        button { padding: 8px 12px; background: #3ba6ff; color: white; border: none; border-radius: 6px; cursor: pointer; }
-        .remove { background: #e74c3c; margin-left: 8px; }
+        .item-block { border: 1px solid #ccc; padding: 15px; margin-bottom: 15px; border-radius: 6px; }
+        hr { margin: 15px 0; }
+        label { display: block; margin-top: 6px; }
+        input, select { padding: 4px; margin-top: 3px; width: 200px; }
+        h2 { color: #3ba6ff; }
+        button { padding: 10px 20px; margin-top: 15px; }
     </style>
 </head>
 <body>
-    <h1>Менеджер — расчёт</h1>
+
+<h2>Расчёт изделия (панель менеджера)</h2>
+
+<form id="calc-form" action="/manager/preview" method="post">
+
+    <input type="hidden" name="data_json" id="data_json">
 
     <div id="items-container"></div>
 
-    <div class="actions">
-        <button id="add-item">Добавить товар</button>
-        <button id="submit-form">Рассчитать</button>
-    </div>
+    <button type="button" onclick="addItem()">➕ Добавить товар</button>
+    <br><br>
+    <button type="submit">Рассчитать</button>
+</form>
 
-    <!-- шаблон блока товара -->
-    <template id="item-template">
-        <div class="item">
-            <label>Тип изделия</label>
-            <select class="product_key">
-                {% for key, it in products.items() %}
-                    <option value="{{ key }}">{{ it.label }} ({{ it.thickness }} мм)</option>
-                {% endfor %}
-            </select>
+<script>
+// Добавление нового товара
+function addItem() {
+    const container = document.getElementById("items-container");
+    const index = container.children.length;
 
-            <label>Ширина (мм)</label>
-            <input type="number" class="width_mm" placeholder="Ширина в мм" />
+    const block = document.createElement("div");
+    block.className = "item-block";
 
-            <label>Высота (мм)</label>
-            <input type="number" class="height_mm" placeholder="Высота в мм" />
+    block.innerHTML = `
+        <h3>Товар №${index + 1}</h3>
 
-            <label>Количество</label>
-            <input type="number" class="quantity" value="1" />
+        <label>Тип изделия:</label>
+        <select class="product_key">
+            {% for key, p in products.items() %}
+                <option value="{{ key }}">{{ p.label }}</option>
+            {% endfor %}
+        </select>
 
-            <div style="margin-top:8px;">
-                <label><input type="checkbox" class="opt_edge"> Обработка кромки</label>
-                <label><input type="checkbox" class="opt_film"> Противоосколочная плёнка</label>
-                <label><input type="checkbox" class="opt_drill"> Сверление</label>
-                <input type="number" class="opt_drill_qty" value="0" style="width:80px;" />
-                <label><input type="checkbox" class="opt_pack"> Упаковка</label>
-                <label><input type="checkbox" class="opt_mount"> Монтаж</label>
-            </div>
+        <label>Ширина (мм):</label>
+        <input type="number" class="width_mm" value="">
 
-            <div style="margin-top:8px;">
-                <label>Доставка (только для всего расчёта)</label>
-                <select class="opt_delivery">
-                    <option value="">Без доставки</option>
-                    <option value="center_центр">Центр</option>
-                    <option value="suburb_пригород">Пригород</option>
-                </select>
-            </div>
+        <label>Высота (мм):</label>
+        <input type="number" class="height_mm" value="">
 
-            <div style="margin-top:8px;">
-                <button class="remove">Удалить товар</button>
-            </div>
-        </div>
-    </template>
+        <label>Количество:</label>
+        <input type="number" class="quantity" value="1">
 
-    <script>
-        const container = document.getElementById('items-container');
-        const template = document.getElementById('item-template');
-        const addBtn = document.getElementById('add-item');
-        const submitBtn = document.getElementById('submit-form');
+        <label><input type="checkbox" class="opt_edge"> Обработка кромки</label>
+        <label><input type="checkbox" class="opt_film"> Противоосколочная плёнка</label>
+        <label><input type="checkbox" class="opt_drill"> Сверление</label>
 
-        function addItem(prefill) {
-            const clone = template.content.cloneNode(true);
-            const el = clone.querySelector('.item');
+        <label>Кол-во отверстий:</label>
+        <input type="number" class="opt_drill_qty" value="0">
 
-            // prefill values if provided
-            if (prefill) {
-                el.querySelector('.product_key').value = prefill.product_key || '';
-                el.querySelector('.width_mm').value = prefill.width_mm || '';
-                el.querySelector('.height_mm').value = prefill.height_mm || '';
-                el.querySelector('.quantity').value = prefill.quantity || 1;
-                el.querySelector('.opt_edge').checked = !!(prefill.options && prefill.options.edge);
-                el.querySelector('.opt_film').checked = !!(prefill.options && prefill.options.film);
-                el.querySelector('.opt_drill').checked = !!(prefill.options && prefill.options.drill);
-                el.querySelector('.opt_drill_qty').value = prefill.options && prefill.options.drill_qty ? prefill.options.drill_qty : 0;
-                el.querySelector('.opt_pack').checked = !!(prefill.options && prefill.options.pack);
-                el.querySelector('.opt_mount').checked = !!(prefill.options && prefill.options.mount);
-                if (prefill.options && prefill.options.delivery_city) {
-                    el.querySelector('.opt_delivery').value = prefill.options.delivery_city;
-                }
+        <label><input type="checkbox" class="opt_pack"> Упаковка в гофрокартон</label>
+        <label><input type="checkbox" class="opt_mount"> Монтаж (ориентировочно)</label>
+
+        <hr>
+    `;
+
+    container.appendChild(block);
+}
+
+// Формирование JSON перед отправкой
+document.getElementById("calc-form").addEventListener("submit", function(e) {
+    const blocks = document.querySelectorAll(".item-block");
+
+    const items = [];
+
+    blocks.forEach(block => {
+        items.push({
+            product_key: block.querySelector(".product_key").value,
+            width_mm: Number(block.querySelector(".width_mm").value),
+            height_mm: Number(block.querySelector(".height_mm").value),
+            quantity: Number(block.querySelector(".quantity").value),
+            options: {
+                edge: block.querySelector(".opt_edge").checked,
+                film: block.querySelector(".opt_film").checked,
+                drill: block.querySelector(".opt_drill").checked,
+                drill_qty: Number(block.querySelector(".opt_drill_qty").value),
+                pack: block.querySelector(".opt_pack").checked,
+                mount: block.querySelector(".opt_mount").checked
             }
-
-            const removeBtn = el.querySelector('.remove');
-            removeBtn.addEventListener('click', (e) => {
-                e.preventDefault();
-                el.remove();
-            });
-
-            container.appendChild(el);
-        }
-
-        addBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            addItem();
         });
+    });
 
-        // изначально один блок
-        addItem();
+    const payload = { items: items };
 
-        submitBtn.addEventListener('click', (e) => {
-            e.preventDefault();
-            // собираем все товары
-            const nodes = container.querySelectorAll('.item');
-            const items = [];
-            let delivery_choice = "";
-            nodes.forEach(node => {
-                const product_key = node.querySelector('.product_key').value;
-                const width_mm = parseFloat(node.querySelector('.width_mm').value || 0);
-                const height_mm = parseFloat(node.querySelector('.height_mm').value || 0);
-                const quantity = parseInt(node.querySelector('.quantity').value || 1);
+    document.getElementById("data_json").value = JSON.stringify(payload);
+});
+</script>
 
-                const options = {
-                    edge: node.querySelector('.opt_edge').checked,
-                    film: node.querySelector('.opt_film').checked,
-                    drill: node.querySelector('.opt_drill').checked,
-                    drill_qty: parseInt(node.querySelector('.opt_drill_qty').value || 0),
-                    pack: node.querySelector('.opt_pack').checked,
-                    mount: node.querySelector('.opt_mount').checked,
-                    delivery_city: node.querySelector('.opt_delivery').value || null
-                };
-
-                // если указана доставка — запомним (delivery для всего расчёта)
-                if (options.delivery_city) {
-                    delivery_choice = options.delivery_city;
-                    options.delivery_city = options.delivery_city; // keep per item but manager_preview will dedupe
-                }
-
-                items.push({
-                    product_key,
-                    width_mm,
-                    height_mm,
-                    quantity,
-                    options
-                });
-            });
-
-            // Если у нас несколько блоков с разной доставкой — мастер выберет первую непустую
-            if (delivery_choice) {
-                // нормализуем: поставим delivery_city в опции первого элемента
-                items.forEach(it => {
-                    it.options.delivery_city = delivery_choice;
-                });
-            }
-
-            const payload = { items };
-
-            // создаём form и отправляем на /manager/preview
-            const form = document.createElement('form');
-            form.method = 'POST';
-            form.action = '/manager/preview';
-
-            const input = document.createElement('input');
-            input.type = 'hidden';
-            input.name = 'data_json';
-            input.value = JSON.stringify(payload);
-            form.appendChild(input);
-            document.body.appendChild(form);
-            form.submit();
-        });
-    </script>
 </body>
 </html>

@@ -1,0 +1,42 @@
+<!-- app/templates/history_view.html -->
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>КП {{ prop.proposal_number }}</title>
+  <style> body{font-family:Arial;padding:20px;} .btn{padding:6px 10px;background:#3ba6ff;color:#fff;border-radius:4px;text-decoration:none;} </style>
+</head>
+<body>
+  <h1>Коммерческое предложение №{{ prop.proposal_number }}</h1>
+  <p>Дата: {{ prop.created_at.strftime("%d.%m.%Y %H:%M") }}</p>
+  <p>Итого: {{ "%.2f"|format(prop.total) }} ₽</p>
+
+  <h3>Изделия</h3>
+  <ul>
+    {% for it in items %}
+      <li>{{ it.product_name }} ({{ it.thickness }} мм) — {{ it.width }} × {{ it.height }} мм — кол-во: {{ it.quantity }}
+        <ul>
+          {% for s in it.services %}
+            <li>{{ s }}</li>
+          {% endfor %}
+        </ul>
+      </li>
+    {% endfor %}
+  </ul>
+
+  {% if deliveries %}
+  <h3>Доставка</h3>
+  <ul>
+    {% for d in deliveries %}
+      <li>{{ d.label }} — {{ "%.2f"|format(d.price) }} ₽</li>
+    {% endfor %}
+  </ul>
+  {% endif %}
+
+  {% if prop.pdf_path %}
+    <p><a href="/manager/history/download/{{ prop.pdf_path.split('/')[-1] }}" class="btn">Скачать PDF</a></p>
+  {% endif %}
+
+  <p><a href="/manager/history" class="btn">← Назад</a></p>
+</body>
+</html>

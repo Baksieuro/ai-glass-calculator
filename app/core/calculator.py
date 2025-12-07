@@ -7,7 +7,9 @@ from app.core.schemas import (
 )
 
 
-DATA_DIR = settings.DATA_DIR
+BASE_DIR = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = BASE_DIR.parent                    
+DATA_DIR = PROJECT_ROOT / "data"
 
 
 # --- Вспомогательные функции ---
