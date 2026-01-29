@@ -1,28 +1,30 @@
+"""
+Точка входа FastAPI: роутеры, статика, редирект с / на /manager.
+"""
+
 from fastapi import FastAPI
+from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from pathlib import Path
 
-
-from app.config import settings # импорт настроек
-from app.api.routes import router # импорт роутера API
+from app.config import settings
+from app.api.routes import router
 from app.web.manager_routes import router as manager_router
 from app.web.pdf_routes import router as pdf_router
-
+from app.web.history_routes import router as history_router
 
 app = FastAPI(title=settings.PROJECT_NAME)
 
-
-BASE_DIR = Path(__file__).resolve().parent
-app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
-templates = Jinja2Templates(directory=BASE_DIR / "templates")
+if settings.STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(settings.STATIC_DIR)), name="static")
 
 
-@app.get('/')
-async def index(request):
-    return templates.TemplateResponse('index.html', {"request": request})
+@app.get("/")
+async def index():
+    """Главная: редирект в панель менеджера."""
+    return RedirectResponse(url="/manager", status_code=302)
 
-# Подключение роутера API
+
 app.include_router(router, prefix="/api")
 app.include_router(manager_router)
 app.include_router(pdf_router)
+app.include_router(history_router)

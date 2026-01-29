@@ -1,219 +1,251 @@
+"""
+Расчёт стоимости изделий из стекла/зеркал: загрузка данных, calc(), response_to_pdf_data().
+Валидация — core.validators, тексты — config.get_texts().
+"""
+
 import json
 import math
-from pathlib import Path
-from app.config import settings
-from app.core.schemas import (
-    CalcRequest, CalcResponse, CalcPosition, CalcItemFull
+
+from app.config import settings, get_texts
+from app.core.schemas import CalcRequest, CalcResponse, CalcPosition
+from app.core.validators import (
+    validate_dimensions,
+    validate_product_key,
+    validate_material_price,
+    validate_drill_price,
 )
 
 
-BASE_DIR = Path(__file__).resolve().parent.parent
-PROJECT_ROOT = BASE_DIR.parent                    
-DATA_DIR = PROJECT_ROOT / "data"
+def _unit() -> str:
+    return get_texts().get("units", {}).get("piece", "шт")
 
 
-# --- Вспомогательные функции ---
-def mm2m(v): return v / 1000
-def calc_area(w, h): return mm2m(w) * mm2m(h)
-def calc_perimeter(w, h): return 2 * (mm2m(w) + mm2m(h))
+def _pos(key: str) -> str:
+    return get_texts().get("positions", {}).get(key, key)
+
+
+def mm2m(v: float) -> float:
+    return v / 1000
+
+
+def calc_area(w: float, h: float) -> float:
+    return mm2m(w) * mm2m(h)
+
+
+def calc_perimeter(w: float, h: float) -> float:
+    return 2 * (mm2m(w) + mm2m(h))
 
 
 def round_to_100_up(x: float) -> float:
-    """Округление вверх до сотни"""
     return math.ceil(x / 100) * 100
 
 
-def load_products():
+def load_products() -> dict:
+    path = settings.DATA_DIR / "products.txt"
     products = {}
-    path = DATA_DIR / "products.txt"
     with open(path, encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line or line.startswith("#"):
                 continue
-            name, thickness, key = line.split(";")[:3]
-            products[key] = {
-                "label": name,
-                "thickness": float(thickness)
-            }
+            parts = line.split(";")[:3]
+            name, thickness, key = parts[0], float(parts[1]), parts[2]
+            products[key] = {"label": name, "thickness": thickness}
     return products
 
 
-def load_json(name):
-    with open(DATA_DIR / name, encoding="utf-8") as f:
+def load_json(name: str) -> dict:
+    with open(settings.DATA_DIR / name, encoding="utf-8") as f:
         return json.load(f)
 
 
-# ================================================================
-#                     ОСНОВНАЯ ФУНКЦИЯ РАСЧЁТА
-# ================================================================
 def calc(request: CalcRequest) -> CalcResponse:
     products = load_products()
     mat_prices = load_json("prices_materials.json")
     srv_prices = load_json("prices_services.json")
+    unit = _unit()
+    min_price = settings.MIN_OPTION_PRICE
 
     positions: list[CalcPosition] = []
-    grand_total = 0
+    grand_total = 0.0
 
-    # ============================================================
-    #                 ОБРАБОТКА КАЖДОГО ИЗДЕЛИЯ
-    # ============================================================
     for idx, item in enumerate(request.items):
-
-        # Границы
-        if item.height_mm > settings.MAX_HEIGHT_MM:
-            raise ValueError(f"Ошибка: Высота превышает {settings.MAX_HEIGHT_MM} мм")
-
-        if item.width_mm > settings.MAX_WIDTH_MM:
-            raise ValueError(f"Ошибка: Ширина превышает {settings.MAX_WIDTH_MM} мм")
-
-        product = products.get(item.product_key)
-        if product is None:
-            raise ValueError(f"Ошибка: неизвестный товар {item.product_key}")
+        validate_dimensions(item.height_mm, item.width_mm)
+        validate_product_key(item.product_key, products)
+        product = products[item.product_key]
+        validate_material_price(item.product_key, mat_prices)
 
         area = calc_area(item.width_mm, item.height_mm)
         perimeter = calc_perimeter(item.width_mm, item.height_mm)
-
-        # ---- Цена материала ----
-        mat_price = mat_prices.get(item.product_key)
-        if mat_price is None:
-            raise ValueError(f"Ошибка: нет цены для {item.product_key}")
-
-        base_price_single = area * mat_price
-        base_price_single = round_to_100_up(base_price_single)
-
+        mat_price = mat_prices[item.product_key]
+        base_price_single = round_to_100_up(area * mat_price)
         total_item = base_price_single * item.quantity
 
-        positions.append(CalcPosition(
-            name=f"{product['label']} ({product['thickness']} мм) "
-                 f"[{item.width_mm}×{item.height_mm} мм]",
-            quantity=item.quantity,
-            unit="шт",
-            unit_price=base_price_single,
-            total=total_item,
-            item_index=idx
-        ))
+        positions.append(
+            CalcPosition(
+                name=f"{product['label']} ({product['thickness']} мм) [{item.width_mm}×{item.height_mm} мм]",
+                quantity=item.quantity,
+                unit=unit,
+                unit_price=base_price_single,
+                total=total_item,
+                item_index=idx,
+            )
+        )
 
-        # --- Опции изделия ---
         opts = item.options
 
-        # Обработка кромки
         if opts.edge:
-            edge_price = perimeter * srv_prices["edge"]
-            edge_price = max(edge_price, 100)  # минималка
-            edge_total = edge_price * item.quantity
+            edge_price = max(perimeter * srv_prices["edge"], min_price)
+            total_item += edge_price * item.quantity
+            positions.append(
+                CalcPosition(
+                    name=_pos("edge"),
+                    quantity=item.quantity,
+                    unit=unit,
+                    unit_price=edge_price,
+                    total=edge_price * item.quantity,
+                    item_index=idx,
+                )
+            )
 
-            positions.append(CalcPosition(
-                name="Обработка кромки",
-                quantity=item.quantity,
-                unit="шт",
-                unit_price=edge_price,
-                total=edge_total,
-                item_index=idx
-            ))
-            total_item += edge_total
-
-        # Пленка
         if opts.film and "mirror" in item.product_key:
-            film_price = area * srv_prices["film"]
-            film_price = max(film_price, 100)
-            film_total = film_price * item.quantity
+            film_price = max(area * srv_prices["film"], min_price)
+            total_item += film_price * item.quantity
+            positions.append(
+                CalcPosition(
+                    name=_pos("film"),
+                    quantity=item.quantity,
+                    unit=unit,
+                    unit_price=film_price,
+                    total=film_price * item.quantity,
+                    item_index=idx,
+                )
+            )
 
-            positions.append(CalcPosition(
-                name="Противоосколочная плёнка",
-                quantity=item.quantity,
-                unit="шт",
-                unit_price=film_price,
-                total=film_total,
-                item_index=idx
-            ))
-            total_item += film_total
-
-        # Сверление
         if opts.drill:
             t = str(int(product["thickness"]))
-            drill_unit = srv_prices["drill"].get(t)
-            if drill_unit is None:
-                raise ValueError(f"Ошибка: нет цены сверления для толщины {t} мм")
-
-            drill_total = drill_unit * (opts.drill_qty or 0) * item.quantity
-
-            positions.append(CalcPosition(
-                name="Сверление отверстий",
-                quantity=(opts.drill_qty or 0) * item.quantity,
-                unit="шт",
-                unit_price=drill_unit,
-                total=drill_total,
-                item_index=idx
-            ))
+            validate_drill_price(t, srv_prices["drill"])
+            drill_unit = srv_prices["drill"][t]
+            qty = (opts.drill_qty or 0) * item.quantity
+            drill_total = drill_unit * qty
             total_item += drill_total
+            positions.append(
+                CalcPosition(
+                    name=_pos("drill"),
+                    quantity=qty,
+                    unit=unit,
+                    unit_price=drill_unit,
+                    total=drill_total,
+                    item_index=idx,
+                )
+            )
 
-        # Упаковка
         if opts.pack:
-            pack_price = area * srv_prices["pack"]
-            pack_price = max(pack_price, 100)
-            pack_total = pack_price * item.quantity
+            pack_price = max(area * srv_prices["pack"], min_price)
+            total_item += pack_price * item.quantity
+            positions.append(
+                CalcPosition(
+                    name=_pos("pack"),
+                    quantity=item.quantity,
+                    unit=unit,
+                    unit_price=pack_price,
+                    total=pack_price * item.quantity,
+                    item_index=idx,
+                )
+            )
 
-            positions.append(CalcPosition(
-                name="Упаковка в гофрокартон",
-                quantity=item.quantity,
-                unit="шт",
-                unit_price=pack_price,
-                total=pack_total,
-                item_index=idx
-            ))
-            total_item += pack_total
-
-        # Монтаж
         if opts.mount:
             m_price = srv_prices["mount"] * area
             m_total = m_price * item.quantity
-
-            positions.append(CalcPosition(
-                name="Монтаж (ориентировочно)",
-                quantity=item.quantity,
-                unit="шт",
-                unit_price=m_price,
-                total=m_total,
-                item_index=idx
-            ))
             total_item += m_total
+            positions.append(
+                CalcPosition(
+                    name=_pos("mount"),
+                    quantity=item.quantity,
+                    unit=unit,
+                    unit_price=m_price,
+                    total=m_total,
+                    item_index=idx,
+                )
+            )
 
-        # Добавляем итог по изделию
         total_item = round_to_100_up(total_item)
         grand_total += total_item
+        positions.append(
+            CalcPosition(
+                name=_pos("total_per_item"),
+                quantity=1,
+                unit=unit,
+                unit_price=total_item,
+                total=total_item,
+                item_index=idx,
+            )
+        )
 
-        positions.append(CalcPosition(
-            name="Итого по изделию",
-            quantity=1,
-            unit="шт",
-            unit_price=total_item,
-            total=total_item,
-            item_index=idx
-        ))
-
-    # ============================================================
-    #                    ДОСТАВКА (общая)
-    # ============================================================
     delivery_city = request.items[0].options.delivery_city if request.items else None
     if delivery_city:
-        delivery_rates = srv_prices["delivery"]
-        d_price = delivery_rates.get(delivery_city, 0)
+        d_price = srv_prices["delivery"].get(delivery_city, 0)
         grand_total += d_price
+        positions.append(
+            CalcPosition(
+                name=_pos("delivery").format(city=delivery_city),
+                quantity=1,
+                unit=unit,
+                unit_price=d_price,
+                total=d_price,
+                item_index=None,
+            )
+        )
 
-        positions.append(CalcPosition(
-            name=f"Доставка ({delivery_city})",
-            quantity=1,
-            unit="шт",
-            unit_price=d_price,
-            total=d_price,
-            item_index=None
-        ))
-
-    # Округляем общий итог
     grand_total = round_to_100_up(grand_total)
+    return CalcResponse(positions=positions, total=grand_total)
 
-    return CalcResponse(
-        positions=positions,
-        total=grand_total
-)
+
+def response_to_pdf_data(response: CalcResponse) -> dict:
+    """
+    Преобразует CalcResponse в структуру для PDF/превью: items, deliveries, total.
+    """
+    texts = get_texts()
+    total_label = texts.get("positions", {}).get("total_per_item", "Итого по изделию")
+
+    items_map = {}
+    for pos in response.positions:
+        idx = getattr(pos, "item_index", None)
+        if idx is None:
+            continue
+        if idx not in items_map:
+            items_map[idx] = {
+                "product_name": "",
+                "thickness": "",
+                "width": None,
+                "height": None,
+                "quantity": 1,
+                "services": [],
+                "item_total": 0.0,
+            }
+        if "мм" in str(pos.name) and "[" in pos.name:
+            main_part = str(pos.name).split("[")[0].strip()
+            dims = str(pos.name).split("[")[1].split("]")[0]
+            w_s, h_s = dims.split("×")
+
+            def clean_num(s):
+                return float("".join(c for c in str(s) if (c.isdigit() or c == ".")))
+
+            items_map[idx]["product_name"] = main_part.split("(")[0].strip()
+            items_map[idx]["thickness"] = main_part.split("(")[1].replace("мм)", "").strip()
+            items_map[idx]["width"] = clean_num(w_s)
+            items_map[idx]["height"] = clean_num(h_s)
+            items_map[idx]["quantity"] = int(pos.quantity)
+        elif str(pos.name) == total_label:
+            items_map[idx]["item_total"] = pos.total
+        else:
+            items_map[idx]["services"].append(pos.name)
+
+    items_list = [items_map[k] for k in sorted(items_map.keys())]
+    deliveries = [
+        {"label": pos.name, "price": pos.total}
+        for pos in response.positions
+        if getattr(pos, "item_index", None) is None
+    ]
+
+    return {"items": items_list, "deliveries": deliveries, "total": response.total}

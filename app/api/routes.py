@@ -4,8 +4,9 @@
 - /pdf формирует коммерческое предложение в фирменном стиле
 """
 from fastapi import APIRouter, HTTPException
+
 from app.core.schemas import CalcRequest
-from app.core.calculator import calc
+from app.core.calculator import calc, response_to_pdf_data
 from app.core.pdf_generator import generate_pdf
 
 router = APIRouter(tags=["Calculator"])
@@ -23,10 +24,15 @@ async def api_calculate(request: CalcRequest):
 
 @router.post("/pdf")
 async def api_pdf(request: CalcRequest):
-    """Генерация PDF на основе CalcResponse"""
+    """Генерация PDF: расчёт + преобразование в items/deliveries и вызов generate_pdf."""
     try:
         result = calc(request)
-        pdf_path = generate_pdf(result)
+        data = response_to_pdf_data(result)
+        pdf_path = generate_pdf(
+            items=data["items"],
+            deliveries=data["deliveries"],
+            total=data["total"],
+        )
         return {"status": "ok", "file": str(pdf_path)}
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -1,26 +1,26 @@
 from app.core.calculator import calc
-from app.core.schemas import CalcRequest, CalcItem, CalcOptions
+from app.core.schemas import CalcRequest, CalcItemFull, CalcOptions
 
 
 def main():
     # --- Пример данных для теста ---
-    item = CalcItem(
-        width_mm=1000, 
-        height_mm=1200, 
-        product_key="mirror_standart_4mm"
+    item = CalcItemFull(
+        width_mm=1000,
+        height_mm=1200,
+        product_key="mirror_standart_4mm",
+        quantity=1,
+        options=CalcOptions(
+            edge=True,
+            film=True,
+            drill=True,
+            drill_qty=2,
+            pack=True,
+            delivery_city="center_центр",
+            mount=True,
+        ),
     )
-    
-    options = CalcOptions(
-        edge=True,
-        film=True,
-        drill=True,
-        drill_qty=2,
-        pack=True,
-        delivery_city="center",
-        mount=True
-    )
-    
-    request = CalcRequest(item=item, options=options)
+
+    request = CalcRequest(items=[item])
     
     # --- Выполнение расчета ---
     try:

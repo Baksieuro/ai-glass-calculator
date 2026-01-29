@@ -1,0 +1,23 @@
+<!-- Страница после успешной генерации PDF -->
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <title>КП сформировано</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .box { border: 1px solid #e7e7e7; padding: 20px; border-radius: 8px; max-width: 500px; }
+        .btn { display: inline-block; padding: 10px 20px; background: #3ba6ff; color: white; text-decoration: none; border-radius: 6px; margin-top: 15px; }
+        .btn:hover { background: #2a8ee0; }
+    </style>
+</head>
+<body>
+    <h1>Коммерческое предложение сформировано</h1>
+    <div class="box">
+        <p><strong>Номер КП:</strong> {{ proposal_number }}</p>
+        <p><a href="/manager/pdf/download/{{ pdf_filename }}" class="btn">Скачать PDF</a></p>
+        <p><a href="/manager">← Новый расчёт</a></p>
+        <p><a href="/manager/history">Архив КП</a></p>
+    </div>
+</body>
+</html>

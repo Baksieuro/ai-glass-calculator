@@ -249,9 +249,15 @@
 
     <div class="block">
         <div class="block-title">Условия</div>
-        <p><strong>Сроки поставки:</strong> {{ delivery_terms }}</p>
-        <p><strong>Оплата:</strong> {{ payment_terms }}</p>
-        <p><strong>Примечание:</strong> {{ additional_terms }}</p>
+        <p><strong>Сроки поставки:</strong></p>
+        {% if delivery_terms is string %}<p>{{ delivery_terms }}</p>{% else %}
+        <ul class="services-list">{% for t in delivery_terms %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+        <p><strong>Оплата:</strong></p>
+        {% if payment_terms is string %}<p>{{ payment_terms }}</p>{% else %}
+        <ul class="services-list">{% for t in payment_terms %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
+        <p><strong>Примечание:</strong></p>
+        {% if additional_terms is string %}<p>{{ additional_terms }}</p>{% else %}
+        <ul class="services-list">{% for t in additional_terms %}<li>{{ t }}</li>{% endfor %}</ul>{% endif %}
     </div>
 
     <div class="block footer-terms">
