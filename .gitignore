@@ -10,6 +10,8 @@ instance/
 .pytest_cache/
 *.log
 /app/data/*.json
+/docs
+/pdf
 
 # C extensions
 *.so
