@@ -5,7 +5,7 @@
 
 import json
 from pathlib import Path
-from typing import ClassVar, Dict, List
+from typing import Dict, List
 from pydantic_settings import BaseSettings
 
 
@@ -98,19 +98,19 @@ def get_company_info() -> Dict[str, str]:
 
 
 # Условия для PDF (списки строк)
-DELIVERY_TERMS: ClassVar[List[str]] = [
+DELIVERY_TERMS: List[str] = [
     "Доставка по городу Пермь.",
     "Доставка до подъезда.",
     "Подъём оплачивается отдельно.",
 ]
-PAYMENT_TERMS: ClassVar[List[str]] = [
+PAYMENT_TERMS: List[str] = [
     "Предоплата 50%.",
     "Возможна безналичная оплата с НДС.",
 ]
-ADDITIONAL_TERMS: ClassVar[List[str]] = [
+ADDITIONAL_TERMS: List[str] = [
     "Гарантия на монтаж 12 месяцев.",
     "Изготовление от 3 до 7 рабочих дней.",
 ]
-FINAL_TERMS: ClassVar[List[str]] = [
+FINAL_TERMS: List[str] = [
     "Спасибо за обращение! Мы ценим ваше доверие.",
 ]
