@@ -1,11 +1,18 @@
 """
 Набор простых функций для работы с таблицами (create/read).
+Создание КП логируется.
 """
 
-from sqlalchemy.orm import Session
-from app import models
-from datetime import datetime
 import json
+from datetime import datetime
+
+from sqlalchemy.orm import Session
+
+from app import models
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
+
 
 def create_proposal(db: Session, proposal_number: str, total: float, pdf_path: str,
                     items: list, deliveries: list = None, manager: str | None = None,
@@ -27,6 +34,12 @@ def create_proposal(db: Session, proposal_number: str, total: float, pdf_path: s
     db.add(obj)
     db.commit()
     db.refresh(obj)
+    logger.info(
+        "proposal_created | proposal_number=%s | total=%.2f | items_count=%s",
+        proposal_number,
+        total,
+        len(items) if items else 0,
+    )
     return obj
 
 def list_proposals(db: Session, limit: int = 50, offset: int = 0):

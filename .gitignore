@@ -12,6 +12,7 @@ instance/
 /app/data/*.json
 /docs
 /pdf
+/logs
 
 # C extensions
 *.so

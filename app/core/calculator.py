@@ -1,6 +1,6 @@
 """
 Расчёт стоимости изделий из стекла/зеркал: загрузка данных, calc(), response_to_pdf_data().
-Валидация — core.validators, тексты — config.get_texts().
+Валидация — core.validators, тексты — config.get_texts(). Расчёты логируются.
 """
 
 import json
@@ -14,6 +14,9 @@ from app.core.validators import (
     validate_material_price,
     validate_drill_price,
 )
+from app.logging_config import get_logger
+
+logger = get_logger(__name__)
 
 
 def _unit() -> str:
@@ -65,6 +68,13 @@ def calc(request: CalcRequest) -> CalcResponse:
     srv_prices = load_json("prices_services.json")
     unit = _unit()
     min_price = settings.MIN_OPTION_PRICE
+
+    # Лог входных данных расчёта
+    items_summary = [
+        {"product_key": i.product_key, "width_mm": i.width_mm, "height_mm": i.height_mm, "quantity": i.quantity}
+        for i in request.items
+    ]
+    logger.info("calculation_start | items_count=%s | items=%s", len(request.items), items_summary)
 
     positions: list[CalcPosition] = []
     grand_total = 0.0
@@ -198,6 +208,7 @@ def calc(request: CalcRequest) -> CalcResponse:
         )
 
     grand_total = round_to_100_up(grand_total)
+    logger.info("calculation_done | total=%.2f | positions_count=%s", grand_total, len(positions))
     return CalcResponse(positions=positions, total=grand_total)
 
 

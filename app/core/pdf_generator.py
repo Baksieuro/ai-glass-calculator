@@ -1,6 +1,6 @@
 """
 Генерация PDF для API (POST /api/pdf): items/deliveries/total → HTML → PDF.
-Пути и ассеты — из config и core.assets.
+Пути и ассеты — из config и core.assets. Генерация логируется.
 """
 
 from datetime import datetime
@@ -11,7 +11,9 @@ from weasyprint import HTML
 
 from app.config import settings, get_company_info, DELIVERY_TERMS, PAYMENT_TERMS, ADDITIONAL_TERMS, FINAL_TERMS
 from app.core.assets import get_logo_file_uri, get_works_file_uris
+from app.logging_config import get_logger
 
+logger = get_logger(__name__)
 env = Environment(loader=FileSystemLoader(str(settings.TEMPLATES_DIR)))
 
 
@@ -60,4 +62,5 @@ def generate_pdf(
     out_dir.mkdir(parents=True, exist_ok=True)
     pdf_path = out_dir / filename
     HTML(string=html_out, base_url=str(settings.APP_DIR)).write_pdf(str(pdf_path))
+    logger.info("pdf_generated | proposal_number=%s | total=%.2f | file=%s", proposal_number, total, str(pdf_path))
     return pdf_path

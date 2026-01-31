@@ -1,6 +1,6 @@
 """
 Генерация PDF из превью: POST /manager/pdf, скачивание /manager/pdf/download/{filename}.
-Пути и ассеты — из config и core.assets.
+Пути и ассеты — из config и core.assets. Действия и ошибки логируются.
 """
 
 import json
@@ -15,8 +15,10 @@ from app import crud
 from app.config import settings, DELIVERY_TERMS, PAYMENT_TERMS, ADDITIONAL_TERMS, FINAL_TERMS, get_company_info
 from app.core.assets import get_logo_file_uri, get_works_file_uris
 from app.db import SessionLocal
+from app.logging_config import get_logger
 
 router = APIRouter()
+logger = get_logger(__name__)
 
 settings.PDF_DIR.mkdir(parents=True, exist_ok=True)
 templates = Jinja2Templates(directory=str(settings.TEMPLATES_DIR))
@@ -28,6 +30,7 @@ async def manager_generate_pdf(request: Request, data_json: str = Form(...)):
     try:
         data = json.loads(data_json)
     except Exception as e:
+        logger.error("manager_pdf | invalid_json | %s", str(e), exc_info=True)
         return HTMLResponse(content=f"JSON error: {e}", status_code=400)
 
     items = data.get("items", [])
@@ -69,6 +72,12 @@ async def manager_generate_pdf(request: Request, data_json: str = Form(...)):
     finally:
         db.close()
 
+    logger.info(
+        "manager_pdf | created | proposal_number=%s | total=%.2f | file=%s",
+        proposal_number,
+        total,
+        pdf_filename,
+    )
     return templates.TemplateResponse(
         "manager_pdf_ready.html",
         {
@@ -84,6 +93,7 @@ async def manager_download_pdf(filename: str):
     """Скачивание PDF по имени файла."""
     file_path = settings.PDF_DIR / filename
     if not file_path.exists():
+        logger.warning("manager_pdf_download | file_not_found | filename=%s", filename)
         return HTMLResponse(content="File not found", status_code=404)
     return FileResponse(
         path=file_path,

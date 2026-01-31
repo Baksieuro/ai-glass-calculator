@@ -1,6 +1,7 @@
 """
 Маршруты менеджера: форма /manager, превью /manager/preview.
 Форма отправляет JSON с items; расчёт через calc(), данные для PDF — response_to_pdf_data().
+Ошибки и действия менеджера логируются.
 """
 
 import json
@@ -12,9 +13,11 @@ from fastapi.templating import Jinja2Templates
 from app.config import settings
 from app.core.calculator import calc, load_products, response_to_pdf_data
 from app.core.schemas import CalcRequest
+from app.logging_config import get_logger
 
 router = APIRouter()
 templates = Jinja2Templates(directory=str(settings.TEMPLATES_DIR))
+logger = get_logger(__name__)
 
 
 @router.get("/manager", response_class=HTMLResponse)
@@ -34,6 +37,7 @@ async def manager_preview(request: Request, data_json: str = Form(...)):
         data = json.loads(data_json)
         items_payload = data.get("items", [])
     except Exception as e:
+        logger.error("manager_preview | invalid_json | %s", str(e), exc_info=True)
         return HTMLResponse(content=f"Invalid JSON: {e}", status_code=400)
 
     try:
@@ -41,8 +45,14 @@ async def manager_preview(request: Request, data_json: str = Form(...)):
         result = calc(req)
         data_for_pdf = response_to_pdf_data(result)
     except Exception as e:
+        logger.error("manager_preview | calculation_error | %s", str(e), exc_info=True)
         return HTMLResponse(content=f"Calculation error: {e}", status_code=400)
 
+    logger.info(
+        "manager_preview | success | items_count=%s | total=%.2f",
+        len(items_payload),
+        data_for_pdf["total"],
+    )
     data_json_out = json.dumps(data_for_pdf, ensure_ascii=False)
     return templates.TemplateResponse(
         "manager_preview.html",

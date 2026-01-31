@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     APP_DIR: Path = _APP_DIR
     DATA_DIR: Path = _PROJECT_ROOT / "data"
     PDF_DIR: Path = _PROJECT_ROOT / "pdf"
+    LOGS_DIR: Path = _PROJECT_ROOT / "logs"
     TEMPLATES_DIR: Path = _APP_DIR / "templates"
     STATIC_DIR: Path = _APP_DIR / "static"
     ASSETS_DIR: Path = _APP_DIR / "assets"
@@ -98,17 +99,17 @@ def get_company_info() -> Dict[str, str]:
 
 # Условия для PDF (списки строк)
 DELIVERY_TERMS: ClassVar[List[str]] = [
-    "— Доставка по городу Пермь.",
-    "— Доставка до подъезда.",
-    "— Подъём оплачивается отдельно.",
+    "Доставка по городу Пермь.",
+    "Доставка до подъезда.",
+    "Подъём оплачивается отдельно.",
 ]
 PAYMENT_TERMS: ClassVar[List[str]] = [
-    "— Предоплата 50%.",
-    "— Возможна безналичная оплата с НДС.",
+    "Предоплата 50%.",
+    "Возможна безналичная оплата с НДС.",
 ]
 ADDITIONAL_TERMS: ClassVar[List[str]] = [
-    "— Гарантия на монтаж — 12 месяцев.",
-    "— Изготовление от 3 до 7 рабочих дней.",
+    "Гарантия на монтаж 12 месяцев.",
+    "Изготовление от 3 до 7 рабочих дней.",
 ]
 FINAL_TERMS: ClassVar[List[str]] = [
     "Спасибо за обращение! Мы ценим ваше доверие.",
